@@ -4,6 +4,8 @@ export class Store {
     this.requests = new Map(); // request id -> request object
     this.events = new Map();   // request id -> Map(event id -> event object)
     this.staff = new Map();    // staff id -> current name
+    this.sites = new Map();    // site id -> { timezone, business_hours, holidays: Set of "YYYY-MM-DD" }
+    this.ready = false;        // true once everything is loaded (for /ready)
   }
 
   // Apply one item from /v1/changes
