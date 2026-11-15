@@ -26,6 +26,7 @@
 - **The status label for `canceled` is "Cancelled"**; I compare against the value `canceled`.
 - - **Two different staff members are both named "Marcus Lee"** (ids 368 and 371). The responder summary is grouped by id, never by name, so they stay separate.
 - After the first `429` my client doubles the pause between calls (250 ms, at most 2 s) instead of retrying at full speed: a full load now gets 1 `429` instead of about 32.
+
 ## How I used AI
 - I first had Claude (Anthropic) generate a complete version, which I ran to explore the real API.
 - Then I rebuilt the app myself step by step so I understand every line: Claude gave me skeletons with TODOs and explained the rules; I wrote the logic. The timezone conversion helpers, Express wiring and the test files were mostly given by Claude.
@@ -45,6 +46,5 @@
   could edit the position number by hand. Next: sign the cursor (HMAC).
 - **No cache:** each report computes every row (~0.7 s for six months). If it got slower, I would cache rows
   and recompute only requests touched by a change.
-- **`410` (expired cursor) replays the feed from the start.** It is handled in code but I never saw it
-  happen, so it is untested against the real API.
+- **`410` (expired cursor) replays the feed from the start.** It is handled in code but I never saw it happen, so it is untested against the real API.
 - **`/api/status`** is an extra endpoint (not in the contract) showing sync state and the number of `429`s.
