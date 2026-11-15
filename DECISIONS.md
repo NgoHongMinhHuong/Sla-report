@@ -14,7 +14,8 @@
 - **Rule 6:** `due_at` is read as `DD/MM/YYYY HH:mm` in site-local time; "late" means strictly after, so completing exactly at the deadline is on time. `due_on` on the request is ignored.
 - **Responder name:** current name from `/v1/staff`; the event's `actor_name` only if the person is unknown.
 - **Validation:** `from`/`to` must be real `YYYY-MM-DD` dates and `from <= to`, else 400. Dates in this format compare correctly as strings.
-
+- **CSV export (client request, 14 Nov):** `GET /api/requests.csv` reuses the browse filters, validation and sort, returns all rows (`limit`/`cursor` ignored, not validated), `null` as an empty field, and quotes any field containing a comma, a quote or a line break (quotes doubled). Lines end with `\n`.
+Invalid parameters still get a JSON 400. A "Download CSV" button on the page uses the browse form's filters.
 ## What I found in the API or data
 
 - **Rate limiting:** reading the feed back to back gets `429` with `Retry-After: 1`. My client waits that long and retries (up to 10 times).
