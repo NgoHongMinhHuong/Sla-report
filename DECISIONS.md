@@ -31,6 +31,8 @@
 - **Formats differ:** request `created_at` is an ISO string in UTC; event `at` is Unix seconds.
 - **System events** (`actor_id: null`) also set status `processing`; rule 3 skips them.
 - **The status label for `canceled` is "Cancelled"**; I compare against the value `canceled`.
+- - **Two different staff members are both named "Marcus Lee"** (ids 368 and 371). The responder summary is
+  grouped by id, never by name, so they stay separate.
 
 ## How I used AI
 - I first had Claude (Anthropic) generate a complete version, which I ran to explore the real API.
