@@ -6,6 +6,7 @@ export class Store {
     this.staff = new Map();    // staff id -> current name
     this.sites = new Map();    // site id -> { timezone, business_hours, holidays: Set of "YYYY-MM-DD" }
     this.ready = false;        // true once everything is loaded (for /ready)
+    this.lastSyncAt = null;    // when we last finished reading the feed (ISO string)
   }
 
   // Apply one item from /v1/changes

@@ -41,9 +41,11 @@ export class HelpdeskClient {
         continue;
       }
 
-      if (!res.ok) {
+            if (!res.ok) {
         const body = await res.text();
-        throw new Error(`Helpdesk API GET ${url} failed: ${res.status} ${body}`);
+        const err = new Error(`Helpdesk API GET ${url} failed: ${res.status} ${body}`);
+        err.status = res.status; // so callers can react to a specific status, e.g. 410
+        throw err;
       }
       return res.json();
     }

@@ -20,7 +20,14 @@ export function createApp(store) {
     if (store && store.ready) res.json({ ready: true });
     else res.status(503).json({ ready: false });
   });
-
+  // Not part of the contract: shows that live sync is running (handy for checking and for the video)
+  app.get("/api/status", (req, res) => {
+    res.json({
+      ready: Boolean(store && store.ready),
+      requests: store ? store.requests.size : 0,
+      last_sync_at: store ? store.lastSyncAt : null,
+    });
+  });
   app.get("/api/requests", (req, res) => {
     // TODO (level 4): filters, sorting and cursor pagination, see docs/contract.md.
     res.status(501).json({ error: "not implemented" });

@@ -3,7 +3,8 @@ import { HelpdeskClient } from "./helpdesk.js";
 import { Store } from "./store.js";
 import { loadFeed } from "./sync.js";
 import { parseDayMonthYear } from "./time.js";
-
+// Wait for the given number of milliseconds
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const port = Number(process.env.PORT || 8080);
 const client = new HelpdeskClient();
 const store = new Store();
@@ -32,11 +33,22 @@ async function start() {
     store.staff.set(person.id, person.name);
   }
 
-  // Requests and events from the change feed
-  await loadFeed(client, store);
-
+  // Requests and events from the change feed; keep the cursor to continue from later
+  let cursor = await loadFeed(client, store);
   store.ready = true; // /ready now answers 200
   console.log(`ready: ${store.requests.size} requests, ${store.sites.size} sites in ${Date.now() - startedAt} ms`);
+    // Level 3: keep following the feed, every 5 seconds
+  while (true) {
+    await sleep(5000);
+    try {
+      cursor = await loadFeed(client, store, cursor);
+      store.lastSyncAt = new Date().toISOString();
+    } catch (err) {
+      // TODO: log the error with console.error(...) and keep going:
+      //       one failed poll must not stop live updates
+            console.error(`poll failed: ${err.message}`);
+    }
+  }
 }
 
 start();
