@@ -2,6 +2,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildReport, isValidDate } from "./report.js";
+import { browse } from "./browse.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,8 +30,8 @@ export function createApp(store) {
     });
   });
   app.get("/api/requests", (req, res) => {
-    // TODO (level 4): filters, sorting and cursor pagination, see docs/contract.md.
-    res.status(501).json({ error: "not implemented" });
+    const { status, body } = browse(store, req.query);
+    res.status(status).json(body);
   });
 
   app.get("/api/sla-report", (req, res) => {

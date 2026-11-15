@@ -11,25 +11,29 @@ export function isValidDate(text) {
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
 
+// The report row for one request, or null if it doesn't count (rule 1) or is outside [from, to]
+export function rowInRange(store, request, from, to) {
+  // Rule 1: skip canceled / deleted / merged
+  if (!isCounted(request)) return null;
+
+  const site = store.sites.get(request.site_id);
+  if (!site) return null; // unknown site: can't compute local times
+
+  // Rule 1: the request's local creation date must be within [from, to]
+  const localDate = localDateKey(Date.parse(request.created_at), site.timezone);
+  if (localDate < from || localDate > to) return null;
+
+  // All events of this request (the inner Map's values), as an array
+  const events = [...(store.events.get(request.id)?.values() ?? [])];
+  return computeRow(request, events, site, store.staff);
+}
+
 export function buildReport(store, from, to) {
   const rows = [];
   for (const request of store.requests.values()) {
-    // Rule 1: skip canceled / deleted / merged
-    if (!isCounted(request)) continue;
-
-    const site = store.sites.get(request.site_id);
-    if (!site) continue; // unknown site: can't compute local times
-
-    // Rule 1: the request's local creation date must be within [from, to]
-    const localDate = localDateKey(Date.parse(request.created_at), site.timezone);
-    // TODO A: skip (continue) if localDate is before `from` or after `to`
-        if (localDate < from || localDate > to) continue;
-
-    // All events of this request (the inner Map's values), as an array
-    const events = [...(store.events.get(request.id)?.values() ?? [])];
-    rows.push(computeRow(request, events, site, store.staff));
+    const row = rowInRange(store, request, from, to);
+    if (row) rows.push(row);
   }
-
   // Summary per responder: { id, name, requests, within_target, completed_late }
   const byResponder = new Map();
   for (const row of rows) {
