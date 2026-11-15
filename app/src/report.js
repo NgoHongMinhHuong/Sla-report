@@ -43,7 +43,7 @@ export function buildReport(store, from, to) {
     // TODO B: add 1 to s.within_target if row.within_target is true,
     //         and 1 to s.completed_late if row.completed_late is true
         if (row.within_target === true) s.within_target += 1;
-    if (row.completed_late===true) s.row.completed_late += 1;
+        if (row.completed_late === true) s.completed_late += 1;
   }
 
   return { from, to, requests: rows, responders: [...byResponder.values()] };
