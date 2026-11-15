@@ -24,6 +24,7 @@ export function createApp(store) {
   // Not part of the contract: shows that live sync is running (handy for checking and for the video)
   app.get("/api/status", (req, res) => {
     res.json({
+      rate_limited: store && store.client ? store.client.rateLimited : 0,
       ready: Boolean(store && store.ready),
       requests: store ? store.requests.size : 0,
       last_sync_at: store ? store.lastSyncAt : null,

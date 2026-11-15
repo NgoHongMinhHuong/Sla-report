@@ -8,6 +8,9 @@ export class HelpdeskClient {
   } = {}) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.token = token;
+    this.gapMs = 0;        // pause between calls; grows after each 429
+    this.nextCallAt = 0;   // earliest time (ms) the next call may start
+    this.rateLimited = 0;  // how many 429s we got (shown in /api/status)
   }
 
     // GET a path (e.g. "/v1/sites") with optional query params; returns parsed JSON.
@@ -23,6 +26,10 @@ export class HelpdeskClient {
 
     // Try up to 10 times
     for (let attempt = 0; attempt < 10; attempt++) {
+            // Pace ourselves: wait until we're allowed to call again
+      const wait = this.nextCallAt - Date.now();
+      if (wait > 0) await sleep(wait);
+      this.nextCallAt = Date.now() + this.gapMs;
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${this.token}`,
@@ -30,7 +37,10 @@ export class HelpdeskClient {
         },
       });
 
-            if (res.status === 429) {
+            if (res.status === 429) {        
+            this.rateLimited++;
+        // Too fast: double the pause between calls (250 ms, 500 ms, ... at most 2 s)
+        this.gapMs = Math.min(2000, Math.max(250, this.gapMs * 2));
         // Read how long the API wants us to wait (seconds, as a string like "1")
         const header = res.headers.get("retry-after");
         // Convert to a number; fall back to 1 second if the header is missing

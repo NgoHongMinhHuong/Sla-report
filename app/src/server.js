@@ -8,6 +8,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const port = Number(process.env.PORT || 8080);
 const client = new HelpdeskClient();
 const store = new Store();
+store.client = client; // so /api/status can show how many 429s we got
 
 // Start the web server first, so /health answers while we load
 createApp(store).listen(port, "0.0.0.0", () => {
