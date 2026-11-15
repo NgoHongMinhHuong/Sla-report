@@ -119,3 +119,41 @@ export function browse(store, query) {
   const nextCursor = position < ids.length ? `${snapId}:${position}` : null;
   return { status: 200, body: { data, next_cursor: nextCursor } };
 }
+// ---------------------------------------------------------------------------
+// GET /api/requests.csv (client request): every matching row as CSV, for Excel
+// ---------------------------------------------------------------------------
+
+const CSV_COLUMNS = ["id", "site_id", "responder_id", "responder", "response_business_minutes", "within_target", "completed_late"];
+
+// One CSV field: null -> empty, true/false as words, text quoted if it contains , " or a line break
+function csvField(value) {
+  if (value === null || value === undefined) return "";
+  const text = String(value); // numbers and booleans become "42", "true", "false"
+  if (/[",\r\n]/.test(text)) {
+    return '"' + text.replace(/"/g, '""') + '"'; // standard CSV: double any quote inside
+  }
+  return text;
+}
+
+// Returns { status, body } like browse(); body is a CSV string when status is 200.
+export function browseCsv(store, query) {
+  // limit and cursor are ignored: take them out before checking the rest
+  const { limit, cursor, ...rest } = query;
+  const f = parseQuery(rest);
+  if (f.error) return { status: 400, body: { error: f.error } };
+  if (!store || !store.ready) return { status: 503, body: { error: "still loading data" } };
+
+  // Same rows and order as the browse view, but all of them, no paging
+  const rows = [];
+  for (const request of store.requests.values()) {
+    const row = rowInRange(store, request, f.from, f.to);
+    if (row && matches(row, f)) rows.push(row);
+  }
+  rows.sort(compare(f.sort));
+
+  const lines = [CSV_COLUMNS.join(",")];
+  for (const row of rows) {
+    lines.push(CSV_COLUMNS.map((c) => csvField(row[c])).join(","));
+  }
+  return { status: 200, body: lines.join("\n") + "\n" };
+}

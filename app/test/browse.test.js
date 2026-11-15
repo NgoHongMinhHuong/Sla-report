@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { browse } from "../src/browse.js";
-
+import { browse, browseCsv } from "../src/browse.js";
 const h = { open: "08:00", close: "18:00" };
 const at = (local) => Date.parse(local + "+08:00") / 1000; // Singapore time -> Unix seconds
 
@@ -81,4 +80,19 @@ test("data changes mid-walk: stable rows appear exactly once", () => {
   for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 10]) {
     assert.equal(seen.filter((x) => x === id).length, 1, `id ${id} should appear exactly once`);
   }
+});
+test("CSV: header, same filters and sort, nulls empty, names quoted", () => {
+  const store = makeStore();
+  store.staff.set(338, 'Tan, Benjamin "Ben"'); // a name with a comma and quotes
+
+  const res = browseCsv(store, { ...base, sort: "-response_business_minutes", site_id: "13", limit: "1", cursor: "ignored" });
+  assert.equal(res.status, 200);
+  const lines = res.body.trimEnd().split("\n");
+  assert.equal(lines[0], "id,site_id,responder_id,responder,response_business_minutes,within_target,completed_late");
+  // site 13 = ids 6-10; answered (even) ones by minutes descending, then unanswered by id; limit ignored
+  assert.deepEqual(lines.slice(1).map((l) => l.split(",")[0]), ["10", "8", "6", "7", "9"]);
+  assert.equal(lines[1], '10,13,338,"Tan, Benjamin ""Ben""",10,true,');
+  assert.equal(lines[4], "7,13,,,,,");
+
+  assert.equal(browseCsv(store, { ...base, late: "maybe" }).status, 400);
 });

@@ -44,6 +44,7 @@
     </select></label>
     <label>Per page <input name="limit" value="50" size="4"></label>
     <button type="submit">Search</button>
+    <button type="button" id="csv">Download CSV</button>
   </form>
   <p id="bstatus"></p>
   <table id="browse"><thead></thead><tbody></tbody></table>
@@ -137,6 +138,11 @@
       browse(false);
     });
     document.getElementById("more").addEventListener("click", () => browse(true));
-  </script>
+    // CSV download: same filters and sort as the browse form (limit is ignored by the server)
+    document.getElementById("csv").addEventListener("click", () => {
+      const params = [...new FormData(document.getElementById("b"))].filter(([, v]) => v !== "");
+      window.location = "/api/requests.csv?" + new URLSearchParams(params);
+    });
+  </script> 
 </body>
 </html>

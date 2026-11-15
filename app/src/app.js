@@ -2,8 +2,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildReport, isValidDate } from "./report.js";
-import { browse } from "./browse.js";
-
+import { browse, browseCsv } from "./browse.js";  
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 // store = the in-memory data (undefined in the starter's health test)
@@ -34,7 +33,14 @@ export function createApp(store) {
     const { status, body } = browse(store, req.query);
     res.status(status).json(body);
   });
-
+  // CSV download of the browse view (client request): same filters and sort, all rows
+  app.get("/api/requests.csv", (req, res) => {
+    const { status, body } = browseCsv(store, req.query);
+    if (status !== 200) return res.status(status).json(body); // errors stay JSON
+    res.set("Content-Type", "text/csv; charset=utf-8");
+    res.set("Content-Disposition", 'attachment; filename="requests.csv"'); // browser saves it as a file
+    res.send(body);
+  });
   app.get("/api/sla-report", (req, res) => {
     const { from, to } = req.query;
     // TODO C: 400 if from is not a valid date, OR to is not a valid date, OR from is after to
