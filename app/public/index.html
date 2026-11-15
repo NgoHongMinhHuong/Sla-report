@@ -3,28 +3,140 @@
 <head>
   <meta charset="utf-8">
   <title>Response-time report</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; }
+    table { border-collapse: collapse; margin: .5rem 0 1.5rem; }
+    th, td { border: 1px solid #ccc; padding: .25rem .5rem; text-align: left; }
+    td.num { text-align: right; }
+    form { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: .5rem; }
+    .late { color: #b00; }
+  </style>
 </head>
 <body>
   <h1>Response-time report</h1>
+  <p id="ready">Checking data…</p>
+
+  <!-- Level 1: the report -->
+  <h2>Report</h2>
   <form id="f">
     <label>From <input type="date" name="from" required></label>
     <label>To <input type="date" name="to" required></label>
     <button type="submit">Run report</button>
   </form>
   <p id="status"></p>
-  <table id="report" border="1">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+  <h3>By responder</h3>
+  <table id="responders"><thead><tr><th>Responder</th><th>Requests</th><th>Within target</th><th>Completed late</th></tr></thead><tbody></tbody></table>
+  <h3>Requests</h3>
+  <table id="report"><thead></thead><tbody></tbody></table>
+
+  <!-- Level 4: browse with filters, sorting and paging -->
+  <h2>Browse</h2>
+  <form id="b">
+    <label>From <input type="date" name="from" required></label>
+    <label>To <input type="date" name="to" required></label>
+    <label>Site id <input name="site_id" size="5"></label>
+    <label>Responder id <input name="responder_id" size="5"></label>
+    <label>Late <select name="late"><option value="">any</option><option>true</option><option>false</option></select></label>
+    <label>Within target <select name="within_target"><option value="">any</option><option>true</option><option>false</option></select></label>
+    <label>Sort <select name="sort">
+      <option value="id">id ↑</option><option value="-id">id ↓</option>
+      <option value="response_business_minutes">minutes ↑</option><option value="-response_business_minutes">minutes ↓</option>
+    </select></label>
+    <label>Per page <input name="limit" value="50" size="4"></label>
+    <button type="submit">Search</button>
+  </form>
+  <p id="bstatus"></p>
+  <table id="browse"><thead></thead><tbody></tbody></table>
+  <button id="more" hidden>Next page</button>
+
   <script>
+    const COLUMNS = ["id", "site_id", "responder_id", "responder", "response_business_minutes", "within_target", "completed_late"];
+
+    // Default both forms to October 2026
+    for (const form of document.forms) {
+      form.from.value = "2026-10-01";
+      form.to.value = "2026-10-31";
+    }
+
+    // Show whether the data is loaded and when it was last synced (refreshes every 5 s)
+    async function showStatus() {
+      const s = await (await fetch("/api/status")).json();
+      document.getElementById("ready").textContent = s.ready
+        ? `Data ready: ${s.requests} requests, last synced ${s.last_sync_at ?? "just now"}`
+        : "Loading helpdesk data… (reports answer 503 until ready)";
+      setTimeout(showStatus, 5000);
+    }
+    showStatus();
+
+    // One table cell; "—" for null
+    function cell(value, key) {
+      const td = document.createElement("td");
+      td.textContent = value === null ? "—" : String(value);
+      if (typeof value === "number") td.className = "num";
+      if (key === "completed_late" && value === true) td.className = "late";
+      return td;
+    }
+
+    // Put rows into a table (append = keep the rows already there)
+    function renderRows(table, rows, append) {
+      table.tHead.innerHTML = "<tr>" + COLUMNS.map((c) => `<th>${c}</th>`).join("") + "</tr>";
+      if (!append) table.tBodies[0].innerHTML = "";
+      for (const r of rows) {
+        const tr = document.createElement("tr");
+        for (const c of COLUMNS) tr.appendChild(cell(r[c], c));
+        table.tBodies[0].appendChild(tr);
+      }
+    }
+
+    // Report form -> GET /api/sla-report
     document.getElementById("f").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const params = new URLSearchParams(new FormData(e.target));
-      const res = await fetch("/api/sla-report?" + params);
+      const status = document.getElementById("status");
+      status.textContent = "Loading…";
+      const t0 = performance.now();
+      const res = await fetch("/api/sla-report?" + new URLSearchParams(new FormData(e.target)));
       const data = await res.json();
-      // TODO: render `data` into the table.
-      document.getElementById("status").textContent = res.status + " " + JSON.stringify(data);
+      if (!res.ok) { status.textContent = `${res.status}: ${data.error}`; return; }
+
+      const answered = data.requests.filter((r) => r.responder_id !== null).length;
+      const within = data.requests.filter((r) => r.within_target === true).length;
+      const late = data.requests.filter((r) => r.completed_late === true).length;
+      status.textContent = `${data.requests.length} requests, ${answered} answered, ${within} within target, ` +
+        `${late} completed late (${Math.round(performance.now() - t0)} ms)`;
+
+      const tbody = document.querySelector("#responders tbody");
+      tbody.innerHTML = "";
+      for (const r of data.responders) {
+        const tr = document.createElement("tr");
+        for (const v of [`${r.name} (#${r.id})`, r.requests, r.within_target, r.completed_late]) tr.appendChild(cell(v));
+        tbody.appendChild(tr);
+      }
+      renderRows(document.getElementById("report"), data.requests, false);
     });
+
+    // Browse form -> GET /api/requests; "Next page" follows next_cursor
+    let browseParams = null;
+    let nextCursor = null;
+    async function browse(append) {
+      const params = new URLSearchParams(browseParams);
+      if (append && nextCursor) params.set("cursor", nextCursor);
+      const res = await fetch("/api/requests?" + params);
+      const data = await res.json();
+      const status = document.getElementById("bstatus");
+      if (!res.ok) { status.textContent = `${res.status}: ${data.error}`; return; }
+      renderRows(document.getElementById("browse"), data.data, append);
+      nextCursor = data.next_cursor;
+      document.getElementById("more").hidden = !nextCursor;
+      status.textContent = `${document.querySelector("#browse tbody").rows.length} rows shown` +
+        (nextCursor ? ", more available" : ", end of list");
+    }
+    document.getElementById("b").addEventListener("submit", (e) => {
+      e.preventDefault();
+      // Leave out empty filters ("any")
+      browseParams = [...new FormData(e.target)].filter(([, v]) => v !== "");
+      browse(false);
+    });
+    document.getElementById("more").addEventListener("click", () => browse(true));
   </script>
 </body>
 </html>

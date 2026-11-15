@@ -32,4 +32,19 @@
 - Mistakes I made and fixed: `=` instead of `===`, swapped `min`/`max` in the overlap, a typo (`totalMS`), and a bug in the late count that my tests never reached, found when running on real data.
 ## Trade-offs and what I would do next
 
-- TODO: fill in after levels 3 and 4
+- **No persistence:** a restart reloads the whole feed (~50 s). Next: save the data and the last cursor in
+  SQLite and resume from there.
+- **Sites and holidays are read once at start-up.** If they changed while running, a restart would be
+  needed. Next: re-read them every few minutes.
+- **Repeated feed items overwrite by id.** I don't compare `updated_at`, so an old copy of a request
+  arriving after a newer one would win. I didn't see this happen in the practice data, but next I would
+  skip a snapshot whose `updated_at` is older than the one stored.
+- **Browse snapshots are kept in memory forever.** Fine for a demo; next I would expire them after an hour
+  of not being used.
+- **Browse cursors are `<snapshot id>:<position>`.** An unknown or mismatched cursor gets 400, but someone
+  could edit the position number by hand. Next: sign the cursor (HMAC).
+- **No cache:** each report computes every row (~0.7 s for six months). If it got slower, I would cache rows
+  and recompute only requests touched by a change.
+- **`410` (expired cursor) replays the feed from the start.** It is handled in code but I never saw it
+  happen, so it is untested against the real API.
+- **`/api/status`** is an extra endpoint (not in the contract) showing sync state and the number of `429`s.
