@@ -33,9 +33,12 @@
 - **The status label for `canceled` is "Cancelled"**; I compare against the value `canceled`.
 
 ## How I used AI
-
-- TODO: write this in your own words (see notes below)
-
+- I first had Claude (Anthropic) generate a complete version, which I ran to explore the real API.
+- Then I rebuilt the app myself step by step so I understand every line: Claude gave me skeletons with
+  TODOs and explained the rules; I wrote the logic. The timezone conversion helpers, Express wiring and
+  the test files were mostly given by Claude.
+- Mistakes I made and fixed: `=` instead of `===`, swapped `min`/`max` in the overlap, a typo
+  (`totalMS`), and a bug in the late count that my tests never reached, found when running on real data.
 ## Trade-offs and what I would do next
 
 - TODO: fill in after levels 3 and 4
