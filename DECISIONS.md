@@ -24,7 +24,7 @@
 - **Formats differ:** request `created_at` is an ISO string in UTC; event `at` is Unix seconds.
 - **System events** (`actor_id: null`) also set status `processing`; rule 3 skips them.
 - **The status label for `canceled` is "Cancelled"**; I compare against the value `canceled`.
-- - **Two different staff members are both named "Marcus Lee"** (ids 368 and 371). The responder summary is grouped by id, never by name, so they stay separate.
+- **Two different staff members are both named "Marcus Lee"** (ids 368 and 371). The responder summary is grouped by id, never by name, so they stay separate.
 - After the first `429` my client doubles the pause between calls (250 ms, at most 2 s) instead of retrying at full speed: a full load now gets 1 `429` instead of about 32.
 
 ## How I used AI
